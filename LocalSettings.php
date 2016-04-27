@@ -108,6 +108,8 @@ $wgDiff3 = "/usr/bin/diff3";
 
 # Install skin
 wfLoadSkin( 'Vector' );
+$wgVectorUseSimpleSearch = true;
+$wgVectorUseIconWatch = true;
 #require_once "$IP/skins/MonoBook/MonoBook.php";
 
 ## Default skin: you can change the default skin. Use the internal symbolic
