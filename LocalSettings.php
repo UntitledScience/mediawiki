@@ -120,4 +120,4 @@ $wgVectorUseIconWatch = true;
 # Add more configuration options below.
 session_save_path("tmp");
 
-$wgLogo = "$IP/images/next-logo.png";
+$wgLogo = "/images/next-logo.png";
