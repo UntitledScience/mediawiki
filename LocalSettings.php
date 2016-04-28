@@ -121,3 +121,5 @@ $wgVectorUseIconWatch = true;
 session_save_path("tmp");
 
 $wgLogo = "/images/next-logo.png";
+
+wfLoadExtension( 'ParserFunctions' );
