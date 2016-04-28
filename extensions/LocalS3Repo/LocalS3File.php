@@ -1,6 +1,8 @@
 <?php
-/**
- */
+/*
+        Modified to work with 1.21 and CloudFront.
+  	Owen Borseth - owen at borseth dot us
+*/
 
 /**
  * Bump this number when serialized cache records may be incompatible.
@@ -27,6 +29,8 @@ define( 'MW_FILE_VERSION', 8 );
  * @ingroup FileRepo
  */
 class LocalS3File extends File {
+	var $thumbTempPath = NULL;
+
 	/**#@+
 	 * @private
 	 */
@@ -81,7 +85,7 @@ class LocalS3File extends File {
 			if(! $this->repo->AWS_S3_PUBLIC) {
 				$path = self::getAuthenticatedURL($this->repo->AWS_S3_BUCKET, $this->repo->getZonePath('public') . $path, 60*60*24*7 /*week*/, false, $this->repo->AWS_S3_SSL);
 			} else {
-				$path = $this->repo->url . $path;
+				$path = $this->repo->getZoneUrl('public') . $path;
 			}
 		}
 		wfDebug( __METHOD__ . " return: $path \n".print_r($this,true)."\n" );
@@ -267,8 +271,8 @@ class LocalS3File extends File {
 
 		$dbr = $this->repo->getMasterDB();
 
-		$row = $dbr->selectRow( 'image', $this->getCacheFields( 'img_' ),
-			array( 'img_name' => $this->getName() ), $fname );
+		$row = $dbr->selectRow( 'image', $this->getCacheFields( 'img_' ), array( 'img_name' => $this->getName() ), $fname );
+
 		if ( $row ) {
 			$this->loadFromRow( $row );
 		} else {
@@ -340,14 +344,17 @@ class LocalS3File extends File {
 		if ( wfReadOnly() ) {
 			return;
 		}
-		if ( is_null( $this->media_type ) ||
-			$this->mime == 'image/svg'
-		) {
+		if ( is_null( $this->media_type ) || $this->mime == 'image/svg') 
+		{
+
 			$this->upgradeRow();
 			$this->upgraded = true;
-		} else {
+		} 
+		else 
+		{
 			$handler = $this->getHandler();
-			if ( $handler && !$handler->isMetadataValid( $this, $this->metadata ) ) {
+			if ( $handler && !$handler->isMetadataValid( $this, $this->metadata ) ) 
+			{
 				$this->upgradeRow();
 				$this->upgraded = true;
 			}
@@ -409,8 +416,10 @@ class LocalS3File extends File {
 		$this->dataLoaded = true;
 		$fields = $this->getCacheFields( '' );
 		$fields[] = 'fileExists';
-		foreach ( $fields as $field ) {
-			if ( isset( $info[$field] ) ) {
+		foreach ( $fields as $field ) 
+		{
+			if ( isset( $info[$field] ) ) 
+			{
 				$this->$field = $info[$field];
 			}
 		}
@@ -534,6 +543,15 @@ class LocalS3File extends File {
 	/** isSafeFile inherited */
 	/** isTrustedFile inherited */
 
+
+	function getLocalRefPath()
+	{
+		if($this->thumbTempPath)
+			return($this->thumbTempPath);
+		else
+			return(parent::getetLocalRefPath());
+	}
+
 	/**
 	 * Returns true if the file file exists on disk.
 	 * @return boolean Whether file file exist on disk.
@@ -609,13 +627,20 @@ class LocalS3File extends File {
 				$thumb = $this->handler->getTransform( $this, $thumbPath, $thumbUrl, $params );
 				break;
 			}
-			$thumbTempPath = tempnam(wfTempDir(), "s3thumb-");
-			$thumb = $this->handler->doTransform( $this, $thumbTempPath, $thumbUrl, $params );
-			wfDebug( __METHOD__. " thumb: ".print_r($thumb->url,true)."\n" );
+
+			$this->thumbTempPath = tempnam(wfTempDir(), "s3thumb-");
+			copy($this->getUrl(), $this->thumbTempPath);
+
+			$thumb = $this->handler->doTransform( $this, $this->thumbTempPath, $thumbUrl, $params );
+
+			wfDebug( __METHOD__. " thumb: ".print_r($thumb->getUrl(),true)."\n" );
 			$s3path = $thumbPath;
-			$info = $s3->putObjectFile($thumbTempPath, $this->repo->AWS_S3_BUCKET, $s3path, 
+
+			$info = $s3->putObjectFile($this->thumbTempPath, $this->repo->AWS_S3_BUCKET, $s3path, 
 							($this->repo->AWS_S3_PUBLIC ? S3::ACL_PUBLIC_READ : S3::ACL_PRIVATE));
-			wfDebug(__METHOD__." thumbTempPath: $thumbTempPath, dest: $s3path\ninfo:".print_r($info,true)."\n");
+
+
+			wfDebug(__METHOD__." thumbTempPath: $this->thumbTempPath, dest: $s3path\ninfo:".print_r($info,true)."\n");
 
 			// Ignore errors if requested
 			if ( !$thumb ) {
@@ -644,7 +669,11 @@ class LocalS3File extends File {
 	 *  $suffix is a path relative to the S3 bucket, and includes the upload directory
 	 */
 	function getThumbUrl( $suffix = false ) {
-		$path = $this->repo->getUrlBase() . "/$suffix";
+		if($this->repo->cloudFrontUrl)
+			$path = $this->repo->cloudFrontUrl . "$suffix";
+		else
+			$path = $this->repo->getUrlBase() . "/$suffix";
+
 		if(! $this->repo->AWS_S3_PUBLIC) 
 			$this->url = self::getAuthenticatedURL($this->repo->AWS_S3_BUCKET, 
 				$suffix, 60*60*24*7 /*week*/, false, 
@@ -1378,12 +1407,16 @@ class LocalS3File extends File {
 	 * Return the complete URL of the file
 	 */
 	public function getUrl() {
-		if ( !isset( $this->url ) ) {
-			$this->url = $this->repo->getZoneUrl( 'public' ) . '/' . $this->getUrlRel();
+		if ( !isset( $this->url ) ) 
+		{
+			if($this->repo->cloudFrontUrl)
+				$this->url  = $this->repo->cloudFrontUrl.$this->repo->directory."/".$this->getUrlRel();
+			else
+				$this->url = $this->repo->getZoneUrl( 'public' ) . '/' . $this->getUrlRel();
+
 			if(! $this->repo->AWS_S3_PUBLIC) 
 				$this->url = self::getAuthenticatedURL($this->repo->AWS_S3_BUCKET, $this->repo->directory . '/'  . $this->getUrlRel(), 60*60*24*7 /*week*/, false, $this->repo->AWS_S3_SSL);
 		}
-		//echo "getUrl(): $this->url <br />";
 		wfDebug( __METHOD__ . ": ".print_r($this->url, true)."\n" );
 		return $this->url;
 	}

@@ -1,4 +1,8 @@
 <?php
+/*
+        Modified to work with 1.21 and CloudFront.
+  	Owen Borseth - owen at borseth dot us
+*/
 
 /**
  * A repository for files accessible via the Amazon S3 filesystem. Does not support
@@ -9,6 +13,7 @@ class FSs3Repo extends FileRepo {
 	var $directory, $deletedDir, $deletedHashLevels, $fileMode;
 	var $urlbase;
 	var $AWS_ACCESS_KEY, $AWS_SECRET_KEY, $AWS_S3_BUCKET, $AWS_S3_PUBLIC, $AWS_S3_SSL;
+	var $cloudFrontUrl;
 	var $fileFactory = array( 'UnregisteredLocalFile', 'newFromTitle' );
 	var $oldFileFactory = false;
 	var $pathDisclosureProtection = 'simple';
@@ -18,10 +23,13 @@ class FSs3Repo extends FileRepo {
 
 		// Required settings
 		$this->directory = isset( $info['directory'] ) ? $info['directory'] : 
-			"http://s3.amazonaws.com/$wgUploadS3Bucket/$wgUploadDirectory";
+			"http://s3.amazonaws.com/".$info['wgUploadS3Bucket']."/".$info['wgUploadDirectory'];
 		$this->AWS_ACCESS_KEY = $info['AWS_ACCESS_KEY'];
 		$this->AWS_SECRET_KEY = $info['AWS_SECRET_KEY'];
 		$this->AWS_S3_BUCKET = $info['AWS_S3_BUCKET'];
+		$this->cloudFrontUrl = $info['cloudFrontUrl'];
+		$this->cloudFrontDirectory = $this->cloudFrontUrl.($this->directory ? $this->directory : $info['wgUploadDirectory']);
+
 		global $s3;
 		$s3->setAuth($this->AWS_ACCESS_KEY, $this->AWS_SECRET_KEY);
 

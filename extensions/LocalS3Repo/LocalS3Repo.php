@@ -1,4 +1,9 @@
 <?php
+/*
+        Modified to work with 1.21 and CloudFront.
+  	Owen Borseth - owen at borseth dot us
+*/
+
  /**
  * A repository for files accessible via the Amazon S3 service, treated as local filesystem.
  * Does not support database access or registration.

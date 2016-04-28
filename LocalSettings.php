@@ -125,29 +125,37 @@ $wgLogo = "/images/next-logo.png";
 wfLoadExtension( 'ParserFunctions' );
 
 // s3 filesystem repo
-$wgUploadDirectory = 'wiki-images';
+$wgUploadDirectory = 'wiki';
 $wgUploadS3Bucket = 'vndossier-media';
 $wgUploadS3SSL = false; // true if SSL should be used
 $wgPublicS3 = true; // true if public, false if authentication should be used
+
 $wgS3BaseUrl = "http".($wgUploadS3SSL?"s":"")."://s3.amazonaws.com/$wgUploadS3Bucket";
-$wgUploadBaseUrl = "$wgS3BaseUrl/$wgUploadDirectory";
+
+//viewing needs a different url from uploading. Uploading doesnt work on the below url and viewing doesnt work on the above one.
+$wgS3BaseUrlView = "http".($wgUploadS3SSL?"s":"")."://".$wgUploadS3Bucket.".s3.amazonaws.com";
+$wgUploadBaseUrl = "$wgS3BaseUrlView/$wgUploadDirectory";
+
+// leave $wgCloudFrontUrl blank to not render images from CloudFront
+$wgCloudFrontUrl = '';//"http".($wgUploadS3SSL?"s":"").'://YOUR_CLOUDFRONT_SUBDOMAIN.cloudfront.net/';
 $wgLocalFileRepo = array(
-	'class' => 'LocalS3Repo',
-	'name' => 's3',
-	'directory' => $wgUploadDirectory,
-	'url' => $wgUploadBaseUrl ? $wgUploadBaseUrl . $wgUploadPath : $wgUploadPath,
-	'urlbase' => $wgS3BaseUrl ? $wgS3BaseUrl : "",
-	'hashLevels' => $wgHashedUploadDirectory ? 2 : 0,
-	'thumbScriptUrl' => $wgThumbnailScriptPath,
-	'transformVia404' => !$wgGenerateThumbnailOnParse,
-	'initialCapital' => $wgCapitalLinks,
-	'deletedDir' => $wgUploadDirectory.'/deleted',
-	'deletedHashLevels' => $wgFileStore['deleted']['hash'],
-	'AWS_ACCESS_KEY' => 'AKIAJPRJ5FMU2PSMRUSA',
-	'AWS_SECRET_KEY' => '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',
-	'AWS_S3_BUCKET' => $wgUploadS3Bucket,
-	'AWS_S3_PUBLIC' => $wgPublicS3,
-	'AWS_S3_SSL' => $wgUploadS3SSL
+        'class' => 'LocalS3Repo',
+        'name' => 's3',
+        'directory' => $wgUploadDirectory,
+        'url' => $wgUploadBaseUrl ? $wgUploadBaseUrl . $wgUploadPath : $wgUploadPath,
+        'urlbase' => $wgS3BaseUrl ? $wgS3BaseUrl : "",
+        'hashLevels' => $wgHashedUploadDirectory ? 2 : 0,
+        'thumbScriptUrl' => $wgThumbnailScriptPath,
+        'transformVia404' => !$wgGenerateThumbnailOnParse,
+        'initialCapital' => $wgCapitalLinks,
+        'deletedDir' => $wgUploadDirectory.'/deleted',
+        'deletedHashLevels' => $wgFileStore['deleted']['hash'],
+        'AWS_ACCESS_KEY' => 'AKIAJPRJ5FMU2PSMRUSA',
+        'AWS_SECRET_KEY' => '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',
+        'AWS_S3_BUCKET' => $wgUploadS3Bucket,
+        'AWS_S3_PUBLIC' => $wgPublicS3,
+        'AWS_S3_SSL' => $wgUploadS3SSL,
+        'cloudFrontUrl' => $wgCloudFrontUrl,
 );
 require_once("$IP/extensions/LocalS3Repo/LocalS3Repo.php");
 // s3 filesystem repo - end
